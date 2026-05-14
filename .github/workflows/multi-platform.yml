@@ -39,7 +39,6 @@ jobs:
         with:
           target: ${{ matrix.config.target }}
           combine: true
-          sdk: nightly
 
   upload:
     name: Combine and upload builds
