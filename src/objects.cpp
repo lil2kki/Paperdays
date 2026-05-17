@@ -19,38 +19,12 @@ class $modify(GJGameLoadingLayerFuckYouuu, GJGameLoadingLayer) {
 	};
 	static GJGameLoadingLayer* transitionToLoadingLayer(GJGameLevel * level, bool editor) {
 		Ref layer = EditLevelLayer::create(level);
-		switchToScene(layer);
+		auto sc = switchToScene(layer);
 		layer->setScale(0.f);
 		layer->setSkewX(editor);
 		layer->setKeypadEnabled(false);
 		layer->getParent()->addChild(hop::create());
 		return nullptr;
-	}
-};
-
-#include <Geode/modify/CCActionInterval.hpp>
-class $modify(DialogTextAnimExt, CCActionInterval) {
-	$override void startWithTarget(CCNode * p0) {
-		//log::debug("{}->{}({})", this, __FUNCTION__, p0);
-		//CCFadeIn, ::startWithTarget({ CCFontSprite, 
-		if (typeinfo_cast<CCFadeIn*>(this)) if (typeinfo_cast<CCFontSprite*>(p0)) {
-			Ref fade = typeinfo_cast<CCFadeIn*>(this);
-			Ref sprite = typeinfo_cast<CCFontSprite*>(p0);
-			if (sprite) sprite->runAction(CCSequence::createWithTwoActions(
-				CCDelayTime::create(fade ? fade->getDuration() : 0.1f), CallFuncExt::create(
-					[sprite] {
-						if (!sprite) return;
-						sprite->setVisible(1);
-						sprite->setOpacity(255);
-						if (not sprite->getContentSize().isZero()) {
-							FMODAudioEngine::get()->playEffect("_text.ogg"_spr);
-						};
-					}
-				)
-			));
-			return;
-		}
-		return CCActionInterval::startWithTarget(p0);
 	}
 };
 
@@ -307,6 +281,45 @@ inline void SetupObjects() {
 	svcondtrigger->registerMe();
 
 }
+
+// DIALOGUE TRIGGER EXTENSIONS
+
+#include <Geode/modify/CCActionInterval.hpp>
+class $modify(DialogTextAnimExt, CCActionInterval) {
+	$override void startWithTarget(CCNode * p0) {
+		//log::debug("{}->{}({})", this, __FUNCTION__, p0);
+		//CCFadeIn, ::startWithTarget({ CCFontSprite, 
+		if (typeinfo_cast<CCFadeIn*>(this)) if (typeinfo_cast<CCFontSprite*>(p0)) {
+			Ref fade = typeinfo_cast<CCFadeIn*>(this);
+			Ref sprite = typeinfo_cast<CCFontSprite*>(p0);
+			if (sprite) sprite->runAction(CCSequence::createWithTwoActions(
+				CCDelayTime::create(fade ? fade->getDuration() : 0.1f), CallFuncExt::create(
+					[sprite] {
+						if (!sprite) return;
+						sprite->setVisible(1);
+						sprite->setOpacity(255);
+						if (not sprite->getContentSize().isZero()) {
+							FMODAudioEngine::get()->playEffect("_text.ogg"_spr);
+						};
+					}
+				)
+			));
+			return;
+		}
+		return CCActionInterval::startWithTarget(p0);
+	}
+};
+
+#include <Geode/modify/TextArea.hpp>
+class $modify(DialogTextAreaExt, TextArea) {
+	static inline auto ForceWidth = 0.f;
+	static TextArea* create(
+		gd::string str, char const* font, float scale,
+		float width, cocos2d::CCPoint anchor, float lineHeight, bool disableColor
+	) {
+		return TextArea::create(str, font, scale, ForceWidth ? ForceWidth : width, anchor, lineHeight, disableColor);
+	};
+};
 
 #include <Geode/modify/DialogLayer.hpp>
 class $modify(DialogTrigger, DialogLayer) {
@@ -677,12 +690,8 @@ class $modify(DialogTrigger, DialogLayer) {
 			saves()["level"] = saves()["level"].asInt().unwrapOr(0) + 1;
 			Ref playlayer = typeinfo_cast<PlayLayer*>(del->m_game.data());
 			if (playlayer and playlayer->isRunning()) {
-				if (playlayer) playlayer->pauseGame(0);
-				if (playlayer) playlayer->pauseAudio();
-				if (playlayer) playlayer->removeFromParent();
-				auto a = CCDirector::get();
-				a->replaceScene(CCScene::create());
-				queueInMainThread([a] { a->replaceScene(LevelSelectLayer::scene(0)); });
+				playlayer->pauseGame(0);
+				CCDirector::get()->replaceScene(CCTransitionFade::create(0.01f, LevelSelectLayer::scene(0)));
 			}
 			return true;
 		}
@@ -691,12 +700,8 @@ class $modify(DialogTrigger, DialogLayer) {
 			saves()["level"] = id;
 			Ref playlayer = typeinfo_cast<PlayLayer*>(del->m_game.data());
 			if (playlayer and playlayer->isRunning()) {
-				if (playlayer) playlayer->pauseGame(0);
-				if (playlayer) playlayer->pauseAudio();
-				if (playlayer) playlayer->removeFromParent();
-				auto a = CCDirector::get();
-				a->replaceScene(CCScene::create());
-				queueInMainThread([a] { a->replaceScene(LevelSelectLayer::scene(0)); });
+				playlayer->pauseGame(0);
+				CCDirector::get()->replaceScene(CCTransitionFade::create(0.01f, LevelSelectLayer::scene(0)));
 			}
 			return true;
 		}
@@ -845,6 +850,7 @@ class $modify(DialogTrigger, DialogLayer) {
 	}
 
 	void displayDialogObject(DialogObject* object) {
+		DialogTextAreaExt::ForceWidth = 1200.f;
 		if (getUserObject("call-org-display") == object) {
 			return DialogLayer::displayDialogObject(object);
 		}
@@ -854,6 +860,7 @@ class $modify(DialogTrigger, DialogLayer) {
 			); else skip();
 		}
 		else DialogLayer::displayDialogObject(object);
+		DialogTextAreaExt::ForceWidth = false;
 	};
 
 	bool init(DialogObject* object, cocos2d::CCArray* objects, int background) {
@@ -869,6 +876,8 @@ class $modify(DialogTrigger, DialogLayer) {
 	void displayNextObject_() {};
 
 };
+
+// MENU ITEM
 
 #include <Geode/modify/EffectGameObject.hpp>
 class $modify(MenuItemGameObject, EffectGameObject) {
@@ -1095,6 +1104,8 @@ class $modify(MenuItemGameObject, EffectGameObject) {
 
 };
 
+// KEYBOARD INPUT
+
 #include <Geode/modify/UILayer.hpp>
 class $modify(UILayerKeysExt, UILayer) {
 	void customUpdate(float) {
@@ -1199,6 +1210,8 @@ class $modify(SelectEventLayerKeysExt, SelectEventLayer) {
 		return true;
 	}
 };
+
+// IMAGE OBJECTS
 
 #include <Geode/modify/CustomizeObjectLayer.hpp>
 class $modify(CustomizeObjectLayerExt, CustomizeObjectLayer) {

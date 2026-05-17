@@ -850,17 +850,29 @@ class $modify(MoreOptionsLayerExt, MoreOptionsLayer) {
 
 #include <Geode/modify/LevelSelectLayer.hpp>
 class $modify(LevelSelectLayerExt, LevelSelectLayer) {
+	class hop : public CCLayer {
+	public:
+		CREATE_FUNC(hop);
+		void sch(float) {
+			auto id = getMod()->getSavedValue("level", 0);
+			auto level = GJGameLevel::create();
+			level->m_autoLevel = true;
+			level->m_levelID = id;
+			level->m_levelName = "pt" + fmt::format("{:03}", id);
+			level->m_levelType = IS_DEV_MODE ? GJLevelType::Editor : GJLevelType::Main;
+			level->m_isEditable = level->m_levelType == GJLevelType::Editor;
+			level->m_levelString = LocalLevelManager::get()->getMainLevelString(id);
+			CCDirector::get()->replaceScene(PlayLayer::scene(level, 0, 0));
+		}
+		void onEnterTransitionDidFinish() override {
+			CCLayer::onEnterTransitionDidFinish();
+			scheduleOnce(schedule_selector(hop::sch), 0.5f);
+		};
+	};
 	static cocos2d::CCScene* scene(int p0) {
-		if (CCKeyboardDispatcher::get()->getControlKeyPressed()) return LevelSelectLayer::scene(p0);
-		auto id = getMod()->getSavedValue("level", 0);
-		auto level = GJGameLevel::create();
-		level->m_autoLevel = true;
-		level->m_levelID = id;
-		level->m_levelName = "pt" + fmt::format("{:03}", id);
-		level->m_levelType = IS_DEV_MODE ? GJLevelType::Editor : GJLevelType::Main;
-		level->m_isEditable = level->m_levelType == GJLevelType::Editor;
-		level->m_levelString = LocalLevelManager::get()->getMainLevelString(id);
-		return PlayLayer::scene(level, 0, 0);
+		auto scene = CCScene::create();
+		scene->addChild(hop::create());
+		return (scene);
 	};
 };
 
